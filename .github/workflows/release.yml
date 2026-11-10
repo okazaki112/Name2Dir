@@ -49,7 +49,7 @@ jobs:
             "/nologo","/target:winexe","/platform:anycpu","/optimize+","/codepage:65001",
             "/win32icon:app.ico",
             "/resource:app.ico,FileOrganizerApp.app.ico",
-            "/out:文件归档助手.exe",
+            "/out:Name2Dir.exe",
             "/win32manifest:src\app.manifest",
             "/reference:$ref\System.dll",
             "/reference:$ref\System.Core.dll",
@@ -62,15 +62,13 @@ jobs:
           )
           & $env:CSC @cscArgs
           if ($LASTEXITCODE -ne 0) { throw "主程序编译失败" }
-          if (-not (Test-Path "文件归档助手.exe")) { throw "未生成 文件归档助手.exe" }
+          if (-not (Test-Path "Name2Dir.exe")) { throw "未生成 Name2Dir.exe" }
 
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: |
-            文件归档助手.exe
-            使用说明.md
+          path: Name2Dir.exe
 
   release:
     needs: build
