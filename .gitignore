@@ -1,0 +1,18 @@
+# 构建产物（由 GitHub Actions 自动构建并发布，仓库只存源码）
+*.exe
+*.pdb
+*.obj
+*.cache
+bin/
+obj/
+
+# 本地拖拽测试生成的文件夹（按需删除，勿提交）
+新建 XLS 工作表/
+新建 XLS 工作表 (2)/
+新建 RTF 文件/
+界面预览/
+
+# 系统 / 编辑器
+Thumbs.db
+Desktop.ini
+.DS_Store

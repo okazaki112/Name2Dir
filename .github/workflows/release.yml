@@ -1,0 +1,95 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 定位 .NET Framework csc
+        shell: pwsh
+        run: |
+          $csc = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          if (-not (Test-Path $csc)) { $csc = Join-Path $env:WINDIR "Microsoft.NET\Framework\v4.0.30319\csc.exe" }
+          if (-not (Test-Path $csc)) { throw "未找到 csc.exe" }
+          "CSC=$csc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "REF=$(Split-Path $csc)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: 逻辑机检（构建门禁）
+        shell: pwsh
+        run: |
+          $ref = $env:REF
+          $cscArgs = @(
+            "/nologo","/target:exe","/optimize+","/codepage:65001",
+            "/out:logic_test.exe",
+            "/reference:$ref\System.dll",
+            "/reference:$ref\System.Core.dll",
+            "tests\TestHarness.cs",
+            "src\FileOrganizer.cs"
+          )
+          & $env:CSC @cscArgs
+          if ($LASTEXITCODE -ne 0) { throw "逻辑机检编译失败" }
+          .\logic_test.exe
+          if ($LASTEXITCODE -ne 0) { throw "逻辑机检未通过（exit $LASTEXITCODE）" }
+
+      - name: 编译主程序 exe
+        shell: pwsh
+        run: |
+          $ref = $env:REF
+          $cscArgs = @(
+            "/nologo","/target:winexe","/platform:anycpu","/optimize+","/codepage:65001",
+            "/win32icon:app.ico",
+            "/resource:app.ico,FileOrganizerApp.app.ico",
+            "/out:文件归档助手.exe",
+            "/win32manifest:src\app.manifest",
+            "/reference:$ref\System.dll",
+            "/reference:$ref\System.Core.dll",
+            "/reference:$ref\System.Drawing.dll",
+            "/reference:$ref\System.Windows.Forms.dll",
+            "src\Program.cs",
+            "src\MainForm.cs",
+            "src\FileOrganizer.cs",
+            "src\DropPanel.cs"
+          )
+          & $env:CSC @cscArgs
+          if ($LASTEXITCODE -ne 0) { throw "主程序编译失败" }
+          if (-not (Test-Path "文件归档助手.exe")) { throw "未生成 文件归档助手.exe" }
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            文件归档助手.exe
+            使用说明.md
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载产物
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: 创建 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRE=""
+          case "$GITHUB_REF_NAME" in
+            *-*) PRE="--prerelease" ;;
+          esac
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "文件归档助手 $GITHUB_REF_NAME" \
+            --generate-notes $PRE
