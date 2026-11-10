@@ -88,6 +88,7 @@ jobs:
           case "$GITHUB_REF_NAME" in
             *-*) PRE="--prerelease" ;;
           esac
+          gh release delete "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
           gh release create "$GITHUB_REF_NAME" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "文件归档助手 $GITHUB_REF_NAME" \
